@@ -30,6 +30,24 @@ app:
     oauth2-enabled: false
   internal-api:
     gedtotalapi-base-url: http://localhost:8080
+  signature:
+    advanced-system:
+      signer-name: GedTotal Advanced Signature
+      reason: Assinatura avancada do sistema
+      location: GedTotal
+    qualified-icp-brasil:
+      enabled: false
+      key-store-path:
+      key-store-password:
+      key-alias:
+      key-password:
+      signer-name: GedTotal ICP-Brasil
+      reason: Assinatura qualificada ICP-Brasil
+      location: GedTotal
+    timestamp:
+      enabled: false
+      tsa-url:
+      authority-name: GedTotal Time
   kafka:
     topics:
       signature-request: custodia.signature.request

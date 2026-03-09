@@ -1,14 +1,18 @@
 package br.com.arquivototal.gedtotalsignature.application.service;
 
+import br.com.arquivototal.gedtotalsignature.application.service.engine.SignatureEngine;
+import br.com.arquivototal.gedtotalsignature.application.service.engine.SignatureStepOutput;
+import br.com.arquivototal.gedtotalsignature.application.service.support.HashUtils;
 import br.com.arquivototal.gedtotalsignature.domain.enumeration.ProcessingStatus;
+import br.com.arquivototal.gedtotalsignature.domain.enumeration.SignatureStepType;
 import br.com.arquivototal.gedtotalsignature.domain.event.SignatureCommandEvent;
 import br.com.arquivototal.gedtotalsignature.domain.event.SignatureFailureEvent;
 import br.com.arquivototal.gedtotalsignature.domain.event.SignatureResultEvent;
 import br.com.arquivototal.gedtotalsignature.infrastructure.http.GedtotalApiClient;
 import br.com.arquivototal.gedtotalsignature.infrastructure.http.SignatureDocumentPayload;
 import br.com.arquivototal.gedtotalsignature.infrastructure.kafka.SignatureEventPublisher;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +25,7 @@ public class SignatureJobService {
 
     private final GedtotalApiClient gedtotalApiClient;
     private final SignatureEventPublisher signatureEventPublisher;
+    private final List<SignatureEngine> signatureEngines;
 
     public void handle(SignatureCommandEvent event) {
         log.info(
@@ -34,6 +39,8 @@ public class SignatureJobService {
         try {
             SignatureDocumentPayload payload = gedtotalApiClient.fetchPayload(event.payloadUrl());
             byte[] content = gedtotalApiClient.fetchDocumentContent(payload.downloadUrl());
+            String hashOriginal = HashUtils.sha256Hex(content);
+            byte[] currentDocument = content;
 
             log.info(
                 "Payload obtido jobId={} arquivoId={} formularioId={} bytes={} nomeArquivo={}",
@@ -44,8 +51,19 @@ public class SignatureJobService {
                 payload.nomeArquivo()
             );
 
-            String hashOriginal = sha256Hex(content);
-            event.etapas().forEach(etapa ->
+            for (SignatureStepType etapa : event.etapas()) {
+                SignatureEngine engine = resolveEngine(etapa);
+                SignatureStepOutput output = engine.apply(currentDocument, payload, event.traceId());
+                currentDocument = output.documentBytes();
+                String hashFinal = HashUtils.sha256Hex(currentDocument);
+                Map<String, Object> metadata = new LinkedHashMap<>();
+                metadata.put("message", "Etapa processada pelo worker de assinatura");
+                metadata.put("nomeArquivo", payload.nomeArquivo());
+                metadata.put("bytesEntrada", content.length);
+                metadata.put("bytesSaida", currentDocument.length);
+                metadata.put("hashPayload", payload.hashAtual());
+                metadata.putAll(output.metadata());
+
                 signatureEventPublisher.publishResult(
                     new SignatureResultEvent(
                         event.jobId(),
@@ -61,22 +79,13 @@ public class SignatureJobService {
                         etapa,
                         ProcessingStatus.CONCLUIDO,
                         hashOriginal,
-                        deriveStepHash(hashOriginal, etapa.name()),
-                        null,
-                        Map.of(
-                            "message",
-                            "Etapa processada pelo worker de assinatura",
-                            "nomeArquivo",
-                            payload.nomeArquivo(),
-                            "bytes",
-                            content.length,
-                            "hashPayload",
-                            payload.hashAtual()
-                        ),
+                        hashFinal,
+                        output.artefatoRef(),
+                        metadata,
                         event.traceId()
                     )
-                )
-            );
+                );
+            }
         } catch (Exception ex) {
             log.error(
                 "Falha ao processar comando de assinatura jobId={} arquivoId={} erro={}",
@@ -106,21 +115,11 @@ public class SignatureJobService {
         }
     }
 
-    private String deriveStepHash(String hashOriginal, String step) {
-        return sha256Hex((hashOriginal + ":" + step).getBytes(StandardCharsets.UTF_8));
-    }
-
-    private String sha256Hex(byte[] content) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(content);
-            StringBuilder builder = new StringBuilder(hash.length * 2);
-            for (byte value : hash) {
-                builder.append(String.format("%02x", value));
-            }
-            return builder.toString();
-        } catch (Exception ex) {
-            throw new IllegalStateException("Nao foi possivel calcular SHA-256", ex);
-        }
+    private SignatureEngine resolveEngine(SignatureStepType etapa) {
+        return signatureEngines
+            .stream()
+            .filter(engine -> engine.supports() == etapa)
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("Nenhuma engine configurada para a etapa " + etapa));
     }
 }
