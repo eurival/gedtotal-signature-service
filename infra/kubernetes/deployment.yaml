@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gedtotal-signature-service
+  namespace: gedtotalap-apps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gedtotal-signature-service
+  template:
+    metadata:
+      labels:
+        app: gedtotal-signature-service
+    spec:
+      containers:
+        - name: gedtotal-signature-service
+          image: docker.io/eurival/gedtotal-signature-service
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8091
+          envFrom:
+            - configMapRef:
+                name: gedtotal-signature-service-config
+            - secretRef:
+                name: gedtotal-signature-service-secrets
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8091
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8091
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"

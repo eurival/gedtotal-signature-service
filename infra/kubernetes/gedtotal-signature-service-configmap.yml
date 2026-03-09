@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gedtotal-signature-service-config
+  namespace: gedtotalap-apps
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SERVER_PORT: "8091"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "15.229.173.87:19092"
+  APP_SECURITY_OAUTH2_ENABLED: "false"
+  APP_INTERNAL_API_GEDTOTALAPI_BASE_URL: "http://gedtotalapi-service.gedtotalap-apps.svc.cluster.local:8080"
+  APP_KAFKA_TOPICS_SIGNATURE_REQUEST: "custodia.signature.request"
+  APP_KAFKA_TOPICS_SIGNATURE_RESULT: "custodia.signature.result"
+  APP_KAFKA_TOPICS_SIGNATURE_FAILURE: "custodia.signature.failure"
