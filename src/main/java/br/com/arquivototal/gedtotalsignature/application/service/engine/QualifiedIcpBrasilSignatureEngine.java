@@ -89,7 +89,13 @@ public class QualifiedIcpBrasilSignatureEngine implements SignatureEngine {
 
             SignatureOptions options = new SignatureOptions();
             options.setPreferredSignatureSize(SignatureOptions.DEFAULT_SIGNATURE_SIZE * 2);
-            SignatureInterface signatureInterface = content -> signCms(content, keyMaterial);
+            SignatureInterface signatureInterface = content -> {
+                try {
+                    return signCms(content, keyMaterial);
+                } catch (Exception ex) {
+                    throw new java.io.IOException("Falha ao gerar CMS da assinatura qualificada", ex);
+                }
+            };
 
             document.addSignature(signature, signatureInterface, options);
             document.getDocumentInformation().setCustomMetadataValue("gedtotal-trace-id", traceId);

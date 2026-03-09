@@ -3,6 +3,7 @@ package br.com.arquivototal.gedtotalsignature.infrastructure.http;
 import br.com.arquivototal.gedtotalsignature.config.InternalApiProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -34,5 +35,25 @@ public class GedtotalApiClient {
             .uri(contentUrl)
             .retrieve()
             .body(byte[].class);
+    }
+
+    public CustodiaArtifactResponse uploadArtifact(Long arquivoId, byte[] content, String nomeArquivo, String etapa) {
+        log.info("Enviando artefato assinado ao gedtotalapi arquivoId={} etapa={} bytes={}", arquivoId, etapa, content.length);
+        return restClientBuilder
+            .baseUrl(internalApiProperties.gedtotalapiBaseUrl())
+            .build()
+            .post()
+            .uri(uriBuilder ->
+                uriBuilder
+                    .path("/api/internal/custodia/documentos/{arquivoId}/artifacts")
+                    .queryParam("contentType", "application/pdf")
+                    .queryParam("nomeArquivo", nomeArquivo)
+                    .queryParam("etapa", etapa)
+                    .build(arquivoId)
+            )
+            .contentType(MediaType.APPLICATION_OCTET_STREAM)
+            .body(content)
+            .retrieve()
+            .body(CustodiaArtifactResponse.class);
     }
 }

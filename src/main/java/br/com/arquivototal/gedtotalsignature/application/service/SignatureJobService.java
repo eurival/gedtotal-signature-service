@@ -8,6 +8,7 @@ import br.com.arquivototal.gedtotalsignature.domain.enumeration.SignatureStepTyp
 import br.com.arquivototal.gedtotalsignature.domain.event.SignatureCommandEvent;
 import br.com.arquivototal.gedtotalsignature.domain.event.SignatureFailureEvent;
 import br.com.arquivototal.gedtotalsignature.domain.event.SignatureResultEvent;
+import br.com.arquivototal.gedtotalsignature.infrastructure.http.CustodiaArtifactResponse;
 import br.com.arquivototal.gedtotalsignature.infrastructure.http.GedtotalApiClient;
 import br.com.arquivototal.gedtotalsignature.infrastructure.http.SignatureDocumentPayload;
 import br.com.arquivototal.gedtotalsignature.infrastructure.kafka.SignatureEventPublisher;
@@ -56,12 +57,20 @@ public class SignatureJobService {
                 SignatureStepOutput output = engine.apply(currentDocument, payload, event.traceId());
                 currentDocument = output.documentBytes();
                 String hashFinal = HashUtils.sha256Hex(currentDocument);
+                CustodiaArtifactResponse artifact = gedtotalApiClient.uploadArtifact(
+                    payload.arquivoId(),
+                    currentDocument,
+                    payload.nomeArquivo(),
+                    etapa.name()
+                );
                 Map<String, Object> metadata = new LinkedHashMap<>();
                 metadata.put("message", "Etapa processada pelo worker de assinatura");
                 metadata.put("nomeArquivo", payload.nomeArquivo());
                 metadata.put("bytesEntrada", content.length);
                 metadata.put("bytesSaida", currentDocument.length);
                 metadata.put("hashPayload", payload.hashAtual());
+                metadata.put("artifactArquivoId", artifact.artifactArquivoId());
+                metadata.put("artifactNomeArquivo", artifact.nomeArquivo());
                 metadata.putAll(output.metadata());
 
                 signatureEventPublisher.publishResult(
@@ -80,7 +89,7 @@ public class SignatureJobService {
                         ProcessingStatus.CONCLUIDO,
                         hashOriginal,
                         hashFinal,
-                        output.artefatoRef(),
+                        artifact.artifactRef(),
                         metadata,
                         event.traceId()
                     )
