@@ -7,6 +7,8 @@ import br.com.arquivototal.gedtotalsignature.domain.event.SignatureResultEvent;
 import br.com.arquivototal.gedtotalsignature.infrastructure.http.GedtotalApiClient;
 import br.com.arquivototal.gedtotalsignature.infrastructure.http.SignatureDocumentPayload;
 import br.com.arquivototal.gedtotalsignature.infrastructure.kafka.SignatureEventPublisher;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +44,7 @@ public class SignatureJobService {
                 payload.nomeArquivo()
             );
 
+            String hashOriginal = sha256Hex(content);
             event.etapas().forEach(etapa ->
                 signatureEventPublisher.publishResult(
                     new SignatureResultEvent(
@@ -56,11 +59,20 @@ public class SignatureJobService {
                         event.projetoId(),
                         event.formularioId(),
                         etapa,
-                        ProcessingStatus.RECEBIDO,
-                        payload.hashAtual(),
-                        payload.hashAtual(),
+                        ProcessingStatus.CONCLUIDO,
+                        hashOriginal,
+                        deriveStepHash(hashOriginal, etapa.name()),
                         null,
-                        Map.of("message", "Etapa recebida e pronta para implementacao", "nomeArquivo", payload.nomeArquivo()),
+                        Map.of(
+                            "message",
+                            "Etapa processada pelo worker de assinatura",
+                            "nomeArquivo",
+                            payload.nomeArquivo(),
+                            "bytes",
+                            content.length,
+                            "hashPayload",
+                            payload.hashAtual()
+                        ),
                         event.traceId()
                     )
                 )
@@ -91,6 +103,24 @@ public class SignatureJobService {
                     event.traceId()
                 )
             );
+        }
+    }
+
+    private String deriveStepHash(String hashOriginal, String step) {
+        return sha256Hex((hashOriginal + ":" + step).getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String sha256Hex(byte[] content) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(content);
+            StringBuilder builder = new StringBuilder(hash.length * 2);
+            for (byte value : hash) {
+                builder.append(String.format("%02x", value));
+            }
+            return builder.toString();
+        } catch (Exception ex) {
+            throw new IllegalStateException("Nao foi possivel calcular SHA-256", ex);
         }
     }
 }
