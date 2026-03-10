@@ -2,6 +2,7 @@ spring:
   application:
     name: gedtotal-signature-service
   kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:15.229.173.87:19092}
     consumer:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
