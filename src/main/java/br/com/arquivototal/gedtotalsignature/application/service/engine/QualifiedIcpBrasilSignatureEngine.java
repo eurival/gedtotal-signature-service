@@ -20,6 +20,7 @@ import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.ZonedDateTime;
 import lombok.RequiredArgsConstructor;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -61,13 +62,39 @@ public class QualifiedIcpBrasilSignatureEngine implements SignatureEngine {
             throw new IllegalStateException("Assinatura qualificada ICP-Brasil nao esta habilitada no worker");
         }
         KeyMaterial keyMaterial = loadKeyMaterial(config);
-        byte[] signedBytes = signPdf(documentBytes, keyMaterial, config, traceId);
+        ZonedDateTime signedAt = ZonedDateTime.now();
+        byte[] renderedBytes = PdfAppendSupport.appendStamp(
+            documentBytes,
+            new PdfAppendSupport.SignatureVisualSpec(
+                supports().name(),
+                config.signerName() != null ? config.signerName() : keyMaterial.certificate().getSubjectX500Principal().getName(),
+                payload.nomeArquivo(),
+                payload.hashAtual(),
+                payload.validacao() != null ? payload.validacao().codigoValidacao() : null,
+                payload.validacao() != null ? payload.validacao().urlValidacao() : null,
+                payload.visual() != null ? payload.visual().modoCarimbo() : "ULTIMA_PAGINA_E_CERTIFICADO",
+                payload.visual() != null ? payload.visual().posicaoCarimbo() : "RODAPE_DIREITO",
+                payload.visual() != null && payload.visual().templateVisual() != null && !payload.visual().templateVisual().isBlank()
+                    ? payload.visual().templateVisual()
+                    : "ICPBRASIL_PADRAO",
+                payload.visual() == null || payload.visual().habilitarCodigoValidacao(),
+                payload.visual() == null || payload.visual().habilitarQrCode(),
+                payload.visual() == null || payload.visual().mostrarHashDocumento(),
+                payload.visual() == null || payload.visual().mostrarDadosAssinatura(),
+                payload.visual() != null && payload.visual().gerarPaginaCertificado(),
+                signedAt
+            )
+        );
+        byte[] signedBytes = signPdf(renderedBytes, keyMaterial, config, traceId);
         String hash = HashUtils.sha256Hex(signedBytes);
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("engine", "qualified-icp-brasil");
         metadata.put("certificateSubject", keyMaterial.certificate().getSubjectX500Principal().getName());
         metadata.put("certificateSerial", keyMaterial.certificate().getSerialNumber().toString(16));
         metadata.put("traceId", traceId);
+        metadata.put("timestamp", signedAt.toString());
+        metadata.put("validationCode", payload.validacao() != null ? payload.validacao().codigoValidacao() : null);
+        metadata.put("validationUrl", payload.validacao() != null ? payload.validacao().urlValidacao() : null);
         metadata.put("outputHash", hash);
         return new SignatureStepOutput(signedBytes, "memory://qualified-icp/" + hash, metadata);
     }

@@ -25,11 +25,27 @@ public class SystemAdvancedSignatureEngine implements SignatureEngine {
     public SignatureStepOutput apply(byte[] documentBytes, SignatureDocumentPayload payload, String traceId) {
         SignatureProperties.AdvancedSystem config = signatureProperties.advancedSystem();
         String signerName = config != null && config.signerName() != null ? config.signerName() : "GedTotal Advanced Signature";
+        ZonedDateTime signedAt = ZonedDateTime.now();
+        SignatureDocumentPayload.VisualConfig visual = payload.visual();
         byte[] signedBytes = PdfAppendSupport.appendStamp(
             documentBytes,
-            "Assinatura avançada do sistema",
-            "signer=" + signerName + " traceId=" + traceId,
-            "arquivoId=" + payload.arquivoId() + " at=" + ZonedDateTime.now()
+            new PdfAppendSupport.SignatureVisualSpec(
+                supports().name(),
+                signerName,
+                payload.nomeArquivo(),
+                payload.hashAtual(),
+                payload.validacao() != null ? payload.validacao().codigoValidacao() : null,
+                payload.validacao() != null ? payload.validacao().urlValidacao() : null,
+                visual != null ? visual.modoCarimbo() : null,
+                visual != null ? visual.posicaoCarimbo() : null,
+                visual != null ? visual.templateVisual() : null,
+                visual == null || visual.habilitarCodigoValidacao(),
+                visual == null || visual.habilitarQrCode(),
+                visual == null || visual.mostrarHashDocumento(),
+                visual == null || visual.mostrarDadosAssinatura(),
+                visual != null && visual.gerarPaginaCertificado(),
+                signedAt
+            )
         );
         String hash = HashUtils.sha256Hex(signedBytes);
         Map<String, Object> metadata = new LinkedHashMap<>();
@@ -37,7 +53,11 @@ public class SystemAdvancedSignatureEngine implements SignatureEngine {
         metadata.put("signerName", signerName);
         metadata.put("reason", config != null ? config.reason() : null);
         metadata.put("location", config != null ? config.location() : null);
-        metadata.put("timestamp", ZonedDateTime.now().toString());
+        metadata.put("timestamp", signedAt.toString());
+        metadata.put("validationCode", payload.validacao() != null ? payload.validacao().codigoValidacao() : null);
+        metadata.put("validationUrl", payload.validacao() != null ? payload.validacao().urlValidacao() : null);
+        metadata.put("visualMode", visual != null ? visual.modoCarimbo() : null);
+        metadata.put("visualTemplate", visual != null ? visual.templateVisual() : null);
         metadata.put("outputHash", hash);
         return new SignatureStepOutput(signedBytes, "memory://system-advanced/" + hash, metadata);
     }

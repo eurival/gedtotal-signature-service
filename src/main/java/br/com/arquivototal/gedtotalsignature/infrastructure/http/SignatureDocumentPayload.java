@@ -1,9 +1,8 @@
 package br.com.arquivototal.gedtotalsignature.infrastructure.http;
 
-import java.util.Map;
-
 public record SignatureDocumentPayload(
     Long arquivoId,
+    Long sourceArquivoId,
     Long masterDadosIndexacaoId,
     Long tenantRootId,
     Long clienteId,
@@ -14,6 +13,21 @@ public record SignatureDocumentPayload(
     String nomeArquivo,
     String hashAtual,
     String downloadUrl,
-    Map<String, Object> configuracao
+    ValidationInfo validacao,
+    VisualConfig visual,
+    java.util.Map<String, Object> configuracao
 ) {
+    public record ValidationInfo(String codigoValidacao, String urlValidacao) {}
+
+    public record VisualConfig(
+        boolean ativo,
+        boolean gerarPaginaCertificado,
+        boolean habilitarCodigoValidacao,
+        boolean habilitarQrCode,
+        boolean mostrarHashDocumento,
+        boolean mostrarDadosAssinatura,
+        String modoCarimbo,
+        String posicaoCarimbo,
+        String templateVisual
+    ) {}
 }
