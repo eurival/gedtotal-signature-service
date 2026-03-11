@@ -39,7 +39,7 @@ Principais propriedades em `src/main/resources/application.yaml`:
 
 - `spring.kafka.bootstrap-servers`
 - `app.internal-api.gedtotalapi-base-url`
-- `app.internal-api.bearer-token`
+- `app.internal-api.internal-token`
 - `app.kafka.topics.signature-request`
 - `app.kafka.topics.signature-result`
 - `app.kafka.topics.signature-failure`
@@ -48,13 +48,13 @@ Principais propriedades em `src/main/resources/application.yaml`:
 
 ```bash
 export KAFKA_BOOTSTRAP_SERVERS=15.229.173.87:19092
-export GEDTOTALAPI_BEARER_TOKEN='SEU_TOKEN_AQUI'
+export GEDTOTALAPI_INTERNAL_TOKEN='SEU_TOKEN_INTERNO_AQUI'
 ```
 
 Observação:
 
-- `GEDTOTALAPI_BEARER_TOKEN` é solução transitória de teste local
-- a solução final deve ser autenticação service-to-service
+- `GEDTOTALAPI_INTERNAL_TOKEN` deve ser o mesmo segredo configurado no `gedtotalapi`
+- essa autenticação é restrita aos endpoints internos de custódia
 
 ## Portas
 
@@ -119,7 +119,7 @@ Pré-requisitos:
 
 - Kafka acessível
 - `gedtotalapi` rodando
-- token válido para os endpoints internos do `gedtotalapi`
+- token interno configurado para os endpoints internos do `gedtotalapi`
 
 Configuração recomendada para primeiro teste:
 

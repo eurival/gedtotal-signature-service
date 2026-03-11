@@ -17,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature;
@@ -66,7 +67,7 @@ public class TimestampSignatureEngine implements SignatureEngine {
         try (PDDocument document = Loader.loadPDF(documentBytes); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             PDSignature signature = new PDSignature();
             signature.setFilter(PDSignature.FILTER_ADOBE_PPKLITE);
-            signature.setSubFilter(PDSignature.SUBFILTER_ETSI_RFC3161);
+            signature.setSubFilter(COSName.getPDFName("ETSI.RFC3161"));
             signature.setName(config.authorityName() != null ? config.authorityName() : "GedTotal TSA");
             signature.setReason("Carimbo do tempo RFC3161");
             signature.setLocation("GedTotal");
