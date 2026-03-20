@@ -88,8 +88,8 @@ final class PdfAppendSupport {
     private static void drawHorizontalStamp(PDDocument document, PDPage page, SignatureVisualSpec spec, SignaturePosition position)
         throws IOException {
         PDRectangle box = page.getMediaBox();
-        float width = Math.min(280f, box.getWidth() - (MARGIN * 2));
-        float height = 78f;
+        float width = Math.min(214f, box.getWidth() - (MARGIN * 2));
+        float height = 54f;
         float x = switch (position) {
             case RODAPE_ESQUERDO, LATERAL_ESQUERDA -> MARGIN;
             case RODAPE_DIREITO, LATERAL_DIREITA -> box.getWidth() - width - MARGIN;
@@ -106,17 +106,17 @@ final class PdfAppendSupport {
             content.addRect(x, y, width, height);
             content.stroke();
 
-            writeText(content, true, 12, x + 10, y + height - 16, header(spec));
-            writeText(content, false, 8, x + 10, y + height - 30, "Codigo: " + display(spec.includeValidationCode(), spec.validationCode()));
-            writeText(content, false, 8, x + 10, y + height - 42, "Assinante: " + trim(spec.signerName(), 34));
-            writeText(content, false, 8, x + 10, y + height - 54, "Data: " + spec.signedAt().format(DISPLAY_TIME));
+            float textX = x + 8;
+            writeText(content, true, 8, textX, y + height - 12, shortHeader(spec));
+            writeText(content, false, 6, textX, y + height - 22, "Codigo: " + display(spec.includeValidationCode(), spec.validationCode()));
+            writeText(content, false, 6, textX, y + height - 31, "Data: " + spec.signedAt().format(DISPLAY_TIME));
 
             if (spec.includeHash()) {
-                writeText(content, false, 7, x + 10, y + height - 66, "Hash: " + trim(spec.documentHash(), 44));
+                writeText(content, false, 5, textX, y + height - 40, "Hash: " + trim(spec.documentHash(), 32));
             }
 
             if (spec.includeQrCode()) {
-                drawQrCode(document, content, x + width - 64, y + 8, 52, spec.validationUrl());
+                drawQrCode(document, content, x + width - 44, y + 8, 34, spec.validationUrl());
             }
         }
     }
@@ -189,7 +189,7 @@ final class PdfAppendSupport {
             );
 
             if (spec.includeQrCode()) {
-                drawQrCode(document, content, box.getWidth() - 164, box.getHeight() - 206, 96, spec.validationUrl());
+                drawQrCode(document, content, box.getWidth() - 164, box.getHeight() - 156, 96, spec.validationUrl());
             }
         }
     }
